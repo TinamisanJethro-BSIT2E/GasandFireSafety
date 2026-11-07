@@ -1,0 +1,27 @@
+{
+  "name": "gas-fire-safety-system",
+  "version": "1.0.0",
+  "private": true,
+  "description": "IoT gas leakage and fire safety monitoring system",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "simulate": "node simulator/simulator.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^12.11.1",
+    "chart.js": "^4.4.8",
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "helmet": "^8.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "pdfkit": "^0.16.0",
+    "ws": "^8.18.0"
+  }
+}

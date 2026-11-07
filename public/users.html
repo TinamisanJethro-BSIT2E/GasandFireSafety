@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Users · Gas & Fire Safety</title><link rel="stylesheet" href="/app.css"><script src="/app.js" defer></script></head>
+<body data-page="users">
+<main class="container">
+  <div class="page-heading"><div><div class="metric-label">ACCESS CONTROL</div><h1>User management</h1><div class="subtitle">Create and remove read-only viewer accounts</div></div></div>
+  <div id="notice" class="notice" role="status"></div>
+  <div class="grid two">
+    <section class="card"><h2>Create viewer account</h2>
+      <form id="createUserForm">
+        <div class="field"><label for="newUsername">Username (3–32 characters)</label><input id="newUsername" name="username" pattern="[a-zA-Z0-9_.\-]{3,32}" required></div>
+        <div class="field"><label for="newUserPassword">Password (at least 10 characters)</label><input id="newUserPassword" name="password" type="password" minlength="10" maxlength="128" required></div>
+        <input type="hidden" name="role" value="viewer">
+        <button class="button" type="submit">Create viewer</button>
+      </form>
+    </section>
+    <section class="card"><h2>Accounts</h2><div class="table-wrap"><table><thead><tr><th>Username</th><th>Role</th><th>Created</th><th>Action</th></tr></thead><tbody id="userRows"></tbody></table></div></section>
+  </div>
+</main></body></html>

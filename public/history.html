@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>History · Gas & Fire Safety</title><link rel="stylesheet" href="/app.css"><script src="/app.js" defer></script></head>
+<body data-page="history">
+<main class="container">
+  <div class="page-heading"><div><div class="metric-label">SYSTEM ACTIVITY</div><h1>Alerts & event history</h1><div class="subtitle">Review alarms, clear events, and notification records</div></div></div>
+  <div id="notice" class="notice" role="status"></div>
+  <section class="card">
+    <form id="historyFilters" class="filters">
+      <div class="field"><label for="from">From</label><input type="date" id="from" name="from"></div>
+      <div class="field"><label for="to">To</label><input type="date" id="to" name="to"></div>
+      <div class="field"><label for="type">Event type</label><select id="type" name="type"><option value="">All events</option><option>Gas Leak</option><option>Fire Detected</option><option>Cleared</option><option>SMS Sent</option><option>System</option></select></div>
+      <button class="button" type="submit">Filter</button>
+      <button class="button secondary" id="clearHistoryFilters" type="reset">Clear filters</button>
+      <a id="csvExport" class="button secondary" href="/api/history/export?format=csv">Export CSV</a>
+      <a id="pdfExport" class="button secondary" href="/api/history/export?format=pdf">Export PDF</a>
+    </form>
+    <p class="metric-foot">Exports include all matching events (up to 10,000), not only the current page.</p>
+    <input type="hidden" id="historyPage" value="1">
+    <div class="table-wrap"><table><thead><tr><th>Date & time</th><th>Event</th><th>Gas ADC</th><th>Actions</th><th>Details</th></tr></thead><tbody id="historyRows"><tr><td colspan="5">Loading…</td></tr></tbody></table></div>
+    <div class="pagination"><button id="prevPage" class="button secondary" type="button">Previous</button><span id="pageLabel" class="muted"></span><button id="nextPage" class="button secondary" type="button">Next</button></div>
+  </section>
+</main>
+</body></html>

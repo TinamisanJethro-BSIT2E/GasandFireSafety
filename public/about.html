@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>About · Gas & Fire Safety</title><link rel="stylesheet" href="/app.css"><script src="/app.js" defer></script></head>
+<body data-page="about">
+<main class="container">
+  <div class="page-heading"><div><div class="metric-label">PROJECT OVERVIEW</div><h1>About the system</h1><div class="subtitle">Department of Hospitality Management · Cavite State University – Imus Campus</div></div></div>
+  <section class="card">
+    <h2>IoT-Based Gas Leakage and Fire Safety System with Automatic Control</h2>
+    <p>This prototype monitors LPG using an MQ-6 sensor and detects flame using a flame sensor. The ESP32 evaluates sensor data locally: gas leaks trigger regulator shut-off, exhaust ventilation, and an audible alarm; fire detection prioritizes the fire status and activates the sprinkler pump while shutting off gas. The 16×2 I²C LCD and GSM modem provide local status and SMS alerts.</p>
+    <p><strong>Safety design:</strong> monitoring and web connectivity are supplementary. The ESP32 runs the detection logic independently, with cached thresholds in flash. Validate every sensor, relay, valve, and power design under supervised conditions before any real-world installation.</p>
+  </section>
+  <div class="grid two" style="margin-top:1rem">
+    <section class="card"><h2>System block diagram</h2>
+      <svg class="diagram" viewBox="0 0 760 330" role="img" aria-label="Block diagram: sensors to ESP32 with actuators, LCD, GSM and Wi-Fi server">
+        <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#3d6757"/></marker></defs>
+        <rect class="sensor" x="20" y="65" width="150" height="55"/><text x="42" y="98">MQ-6 gas sensor</text>
+        <rect class="sensor" x="20" y="190" width="150" height="55"/><text x="41" y="223">Flame sensor</text>
+        <rect class="box" x="260" y="125" width="190" height="75"/><text x="314" y="158">ESP32</text><text x="286" y="181">Local safety logic</text>
+        <rect class="box" x="555" y="25" width="180" height="55"/><text x="585" y="58">Fan + relay</text>
+        <rect class="alert" x="555" y="95" width="180" height="55"/><text x="577" y="128">Pump + relay</text>
+        <rect class="alert" x="555" y="165" width="180" height="55"/><text x="590" y="198">Buzzer + valve</text>
+        <rect class="box" x="555" y="235" width="180" height="55"/><text x="574" y="268">LCD + GSM SMS</text>
+        <rect class="box" x="260" y="250" width="190" height="55"/><text x="282" y="283">Wi-Fi → Web server</text>
+        <rect class="box" x="20" y="270" width="150" height="45"/><text x="39" y="298">Regulated supply</text>
+        <path class="wire" marker-end="url(#arrow)" d="M170 92 L260 145"/><path class="wire" marker-end="url(#arrow)" d="M170 215 L260 180"/>
+        <path class="wire" marker-end="url(#arrow)" d="M450 142 L555 52"/><path class="wire" marker-end="url(#arrow)" d="M450 152 L555 122"/><path class="wire" marker-end="url(#arrow)" d="M450 165 L555 192"/><path class="wire" marker-end="url(#arrow)" d="M365 200 L365 250"/>
+        <path class="wire" marker-end="url(#arrow)" d="M170 292 L260 200"/>
+      </svg>
+      <p class="metric-foot">A regulated supply powers the ESP32, sensors, display, modem, and actuator power stages. Size supply and relay drivers for the actual loads.</p>
+    </section>
+    <section class="card"><h2>Wiring diagram (functional)</h2>
+      <svg class="diagram" viewBox="0 0 760 390" role="img" aria-label="Wiring diagram showing ESP32 pin connections to sensors, actuators, GSM and power supply">
+        <defs><marker id="wiring-arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#3d6757"/></marker></defs>
+        <rect class="box" x="280" y="90" width="190" height="150"/><text x="340" y="125">ESP32</text><text x="298" y="153">GPIO34 ADC ← MQ-6 AO</text><text x="298" y="178">GPIO27 ← Flame DO</text><text x="298" y="203">GPIO21/22 ↔ I²C LCD</text><text x="298" y="225">GPIO16/17 ↔ GSM UART</text>
+        <rect class="sensor" x="20" y="35" width="180" height="60"/><text x="40" y="70">MQ-6 (3.3V-safe AO)</text>
+        <rect class="sensor" x="20" y="135" width="180" height="60"/><text x="38" y="170">Flame DO (GPIO27)</text>
+        <rect class="box" x="20" y="235" width="180" height="60"/><text x="40" y="270">LCD I²C (GPIO21/22)</text>
+        <rect class="alert" x="550" y="35" width="190" height="60"/><text x="575" y="70">Relay: exhaust fan (26)</text>
+        <rect class="alert" x="550" y="115" width="190" height="60"/><text x="570" y="150">Relay: pump (25)</text>
+        <rect class="alert" x="550" y="195" width="190" height="60"/><text x="574" y="230">Buzzer (GPIO33)</text>
+        <rect class="box" x="550" y="270" width="190" height="45"/><text x="564" y="298">Servo valve (GPIO18)</text>
+        <rect class="box" x="20" y="320" width="180" height="50"/><text x="38" y="350">SIM800L / SIM900</text>
+        <rect class="box" x="550" y="330" width="190" height="45"/><text x="571" y="358">Power supply stages</text>
+        <path class="wire" marker-end="url(#wiring-arrow)" d="M200 65 L280 125"/><path class="wire" marker-end="url(#wiring-arrow)" d="M200 165 L280 165"/><path class="wire" marker-end="url(#wiring-arrow)" d="M200 265 L280 215"/>
+        <path class="wire" marker-end="url(#wiring-arrow)" d="M470 125 L550 65"/><path class="wire" marker-end="url(#wiring-arrow)" d="M470 150 L550 145"/><path class="wire" marker-end="url(#wiring-arrow)" d="M470 175 L550 225"/><path class="wire" marker-end="url(#wiring-arrow)" d="M470 205 L550 292"/>
+        <path class="wire" marker-end="url(#wiring-arrow)" d="M200 345 L280 225"/><path class="wire" marker-end="url(#wiring-arrow)" d="M550 350 L470 235"/>
+      </svg>
+      <p class="metric-foot">Relay modules must be suitable for the load and isolated as appropriate. Do not power pumps, fans, or SIM800L directly from ESP32 pins. Verify module voltage levels and common-ground requirements.</p>
+    </section>
+  </div>
+  <section class="card" style="margin-top:1rem"><h2>Example signal / connection table</h2><div class="table-wrap"><table><thead><tr><th>Device</th><th>Example ESP32 connection</th><th>Notes</th></tr></thead><tbody>
+    <tr><td>MQ-6 analog output</td><td>GPIO34 (ADC1)</td><td>Ensure output never exceeds ESP32 input limits; calibrate raw threshold.</td></tr>
+    <tr><td>Flame digital output</td><td>GPIO27</td><td>Firmware defaults to active-low; check your module.</td></tr>
+    <tr><td>Fan and pump relay inputs</td><td>GPIO26 and GPIO25</td><td>Firmware defaults to active-low relay modules.</td></tr>
+    <tr><td>Buzzer / valve actuator</td><td>GPIO33 / GPIO18</td><td>Use a driver for the buzzer; servo/valve requires an appropriate power supply.</td></tr>
+    <tr><td>I²C LCD / GSM UART</td><td>GPIO21/22 / GPIO16/17</td><td>SIM800L requires a separate supply capable of GSM current peaks.</td></tr>
+  </tbody></table></div></section>
+</main></body></html>

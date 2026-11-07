@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Settings · Gas & Fire Safety</title><link rel="stylesheet" href="/app.css"><script src="/app.js" defer></script></head>
+<body data-page="settings">
+<main class="container">
+  <div class="page-heading"><div><div class="metric-label">CONFIGURATION</div><h1>System settings</h1><div class="subtitle">On-device alarm thresholds and notification preferences</div></div></div>
+  <div id="notice" class="notice" role="status"></div>
+  <div class="grid two">
+    <section class="card">
+      <h2>Detection configuration</h2><p class="muted">The ESP32 caches these values in flash and keeps operating if the server is unavailable.</p>
+      <p id="adminSettingsNote" class="muted"></p>
+      <form id="settingsForm">
+        <div class="field"><label for="thresholdInput">Gas threshold (raw ADC, 100–4095)</label><input id="thresholdInput" type="number" min="100" max="4095" required></div>
+        <div class="field"><label for="delayInput">Detection delay (seconds, 1–60)</label><input id="delayInput" type="number" min="1" max="60" required></div>
+        <label style="display:flex;gap:.55rem;align-items:center;margin:1rem 0"><input id="telegramEnabled" type="checkbox"> Enable optional Telegram alerts</label>
+        <p class="metric-foot">Telegram also requires a bot token and chat ID in the server environment.</p>
+        <button class="button" type="submit" data-admin-only>Save settings</button>
+      </form>
+    </section>
+    <section class="card">
+      <h2>Change password</h2><p id="passwordReminder" class="danger-text"></p>
+      <form id="passwordForm">
+        <div class="field"><label for="currentPassword">Current password</label><input id="currentPassword" name="currentPassword" type="password" autocomplete="current-password" required></div>
+        <div class="field"><label for="newPassword">New password (10–128 characters)</label><input id="newPassword" name="newPassword" type="password" minlength="10" maxlength="128" autocomplete="new-password" required></div>
+        <button class="button" type="submit">Change password</button>
+      </form>
+    </section>
+  </div>
+</main></body></html>

@@ -1,0 +1,39 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Start Gas Safety System",
+      "type": "shell",
+      "command": "npm.cmd",
+      "args": ["start"],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "gas-safety-server",
+        "fileLocation": "absolute",
+        "pattern": [
+          {
+            "regexp": "^(.*) \\((.*):(\\d+):(\\d+)\\)$",
+            "file": 2,
+            "line": 3,
+            "column": 4,
+            "message": 1
+          }
+        ],
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "^> gas-fire-safety-system@",
+          "endsPattern": "Gas & Fire Safety System listening on"
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": false
+      },
+      "group": "build"
+    }
+  ]
+}
