@@ -1,18 +1,15 @@
 const page = document.body.dataset.page;
 const API = '/api';
-let currentUser = null;
 let chart = null;
 
 async function api(path, options = {}) {
   const response = await fetch(`${API}${path}`, {
-    credentials: 'same-origin',
     ...options,
     headers: { ...(options.body ? { 'content-type': 'application/json' } : {}), ...(options.headers || {}) }
   });
   if (!response.ok) {
     let message = `Request failed (${response.status})`;
     try { message = (await response.json()).error || message; } catch {}
-    if (response.status === 401 && page !== 'login') location.href = '/';
     throw new Error(message);
   }
   return response;
@@ -34,11 +31,9 @@ function escapeHtml(value) {
 
 function shell() {
   const links = [
-    ['dashboard', 'Dashboard', '/dashboard.html'],
-    ['history', 'History', '/history.html'],
-    ['settings', 'Settings', '/settings.html'],
-    ['users', 'Users', '/users.html'],
-    ['about', 'About', '/about.html']
+    ['dashboard', 'Dashboard', '/dashboard.html', '◫'],
+    ['history', 'History', '/history.html', '▤'],
+    ['about', 'About', '/about.html', 'ⓘ']
   ];
   const pageLabels = Object.fromEntries(links.map(([key, label]) => [key, label]));
   document.body.classList.add('app-shell');
@@ -46,42 +41,18 @@ function shell() {
     <aside class="dashboard-sidebar">
       <a class="brand" href="/dashboard.html" style="text-decoration:none"><span class="brand-mark"><svg class="brand-symbol" viewBox="0 0 24 24" aria-hidden="true"><path class="brand-shield" d="M12 2.5 20 5.6v5.5c0 5.2-3.3 9-8 10.8-4.7-1.8-8-5.6-8-10.8V5.6l8-3.1Z"/><path class="brand-flame" d="M12.7 6.4c.5 2.1-1.8 3.1-1.7 5.1-1.1-.6-1.7-1.6-1.7-2.8-1.3 1.2-2.1 2.8-2.1 4.5a4.8 4.8 0 0 0 9.6 0c0-2.7-1.7-4.7-4.1-6.8Z"/></svg></span><span>Gas &amp; Fire Safety</span></a>
       <nav class="sidebar-links" aria-label="Main navigation">
-        ${links.map(([key, label, href]) => `<a class="${page === key ? 'active' : ''}" href="${href}" data-role-link="${key}"><span class="sidebar-link-icon">${key === 'dashboard' ? '◫' : key === 'history' ? '▤' : key === 'settings' ? '⚙' : key === 'users' ? '♙' : 'ⓘ'}</span>${label}</a>`).join('')}
+        ${links.map(([key, label, href, icon]) => `<a class="${page === key ? 'active' : ''}" href="${href}"><span class="sidebar-link-icon">${icon}</span>${label}</a>`).join('')}
       </nav>
       <div class="sidebar-spacer"></div>
       <div class="sidebar-safety-note"><span class="sidebar-safety-dot"></span><span><strong>Local safety logic</strong><small>ESP32 protection runs offline</small></span></div>
-      <button class="sidebar-logout" id="logoutButton" type="button"><span class="sidebar-link-icon">↪</span>Log out</button>
     </aside>
     <header class="dashboard-topbar">
       <div class="dashboard-context"><span class="context-dot"></span>Gas &amp; Fire Safety <span class="context-divider">/</span> ${pageLabels[page] || 'System'}</div>
     </header>
   `);
-  document.getElementById('logoutButton').addEventListener('click', async () => {
-    try {
-      await api('/auth/logout', { method: 'POST' });
-      location.href = '/';
-    } catch (error) {
-      showNotice(`Logout failed: ${error.message}`, 'error');
-    }
-  });
 }
 
-async function protectPage() {
-  try {
-    const user = await (await api('/auth/me')).json();
-    currentUser = user;
-    if (user.mustChangePassword && page !== 'settings') location.href = '/settings.html';
-    shell();
-    if (user.role !== 'admin') {
-      document.querySelectorAll('[data-role-link="settings"], [data-role-link="users"]').forEach((item) => item.remove());
-    }
-    if (page === 'users' && user.role !== 'admin') location.href = '/dashboard.html';
-    return true;
-  } catch (error) {
-    if (error.message !== 'Failed to fetch') location.href = '/';
-    return false;
-  }
-}
+shell();
 
 function dateTime(value) {
   if (!value) return '—';
@@ -101,7 +72,7 @@ async function loadDashboard() {
   const reading = data.reading;
   const banner = document.getElementById('statusBanner');
   const [className, label] = statusPresentation(reading?.status, data.online);
-  banner.className = `status-banner ${className}`;
+  banner.className = `status-banner ${className} dashboard-status`;
   document.getElementById('systemStatus').textContent = label;
   document.getElementById('lastSeen').textContent = data.lastSeen ? `Last seen ${dateTime(data.lastSeen)}` : 'No device data received yet';
   document.getElementById('bannerConnection').innerHTML = `<span class="online-dot ${data.online ? 'online' : ''}"></span>${data.online ? 'Device online' : 'Device offline'}`;
@@ -184,7 +155,7 @@ function connectLive() {
       showNotice('Received an invalid live update. The dashboard will refresh automatically.', 'error');
       return;
     }
-    if ((data.type === 'reading' || data.type === 'settings') && page === 'dashboard') {
+    if (data.type === 'reading' && page === 'dashboard') {
       loadDashboard().catch((error) => showNotice(error.message, 'error'));
     }
   });
@@ -220,77 +191,16 @@ async function loadHistory() {
   document.getElementById('historyPage').value = data.page;
 }
 
-async function loadSettings() {
-  const settings = await (await api('/settings')).json();
-  document.getElementById('thresholdInput').value = settings.gas_threshold;
-  document.getElementById('delayInput').value = settings.detection_delay;
-  document.getElementById('telegramEnabled').checked = settings.telegram_enabled;
-  const adminControls = currentUser?.role === 'admin';
-  document.querySelectorAll('[data-admin-only]').forEach((element) => {
-    element.disabled = !adminControls;
-  });
-  if (!adminControls) document.getElementById('adminSettingsNote').textContent = 'Viewer access is read-only.';
-}
-
-async function loadUsers() {
-  const data = await (await api('/users')).json();
-  document.getElementById('userRows').innerHTML = data.users.map((user) => `
-    <tr><td>${escapeHtml(user.username)}</td><td>${escapeHtml(user.role)}</td><td>${escapeHtml(dateTime(user.created_at))}</td>
-    <td>${user.id === currentUser.id ? '<span class="muted">Current user</span>' : `<button class="button danger small" data-delete-user="${user.id}">Delete</button>`}</td></tr>
-  `).join('');
-  document.querySelectorAll('[data-delete-user]').forEach((button) => button.addEventListener('click', async () => {
-    if (!confirm('Delete this viewer account?')) return;
-    try {
-      await api(`/users/${button.dataset.deleteUser}`, { method: 'DELETE' });
-      showNotice('User deleted.');
-      await loadUsers();
-    } catch (error) { showNotice(error.message, 'error'); }
-  }));
-}
-
-document.addEventListener('DOMContentLoaded', async () => {
-  if (page === 'login') {
-    document.getElementById('loginForm').addEventListener('submit', async (event) => {
-      event.preventDefault();
-      const form = new FormData(event.currentTarget);
-      try {
-        const response = await api('/auth/login', { method: 'POST', body: JSON.stringify(Object.fromEntries(form)) });
-        const data = await response.json();
-        location.href = data.mustChangePassword ? '/settings.html' : '/dashboard.html';
-      } catch (error) { showNotice(error.message, 'error'); }
-    });
-    try {
-      const response = await fetch(`${API}/auth/me`, { credentials: 'same-origin' });
-      if (response.ok) location.href = '/dashboard.html';
-      else if (response.status !== 401) showNotice('Unable to verify the current session.', 'error');
-    } catch {
-      showNotice('Could not reach the server. Check that it is running and try again.', 'error');
-    }
-    return;
-  }
-  if (!await protectPage()) return;
+document.addEventListener('DOMContentLoaded', () => {
   if (page === 'dashboard') {
-    try { await loadDashboard(); connectLive(); } catch (error) { showNotice(error.message, 'error'); }
+    loadDashboard().then(connectLive).catch((error) => showNotice(error.message, 'error'));
     window.setInterval(() => loadDashboard().catch((error) => showNotice(error.message, 'error')), 5000);
-    const testButton = document.getElementById('buzzerTest');
-    if (currentUser.role !== 'admin') testButton?.remove();
-    testButton?.addEventListener('click', async () => {
-      testButton.disabled = true;
-      testButton.setAttribute('aria-busy', 'true');
-      try {
-        await api('/control', { method: 'POST', body: JSON.stringify({ command: 'buzzer_test' }) });
-        showNotice('Buzzer test queued. The ESP32 will run it when connected.');
-      } catch (error) { showNotice(error.message, 'error'); }
-      finally {
-        testButton.disabled = false;
-        testButton.removeAttribute('aria-busy');
-      }
-    });
   }
   if (page === 'history') {
     const historyForm = document.getElementById('historyFilters');
-    document.getElementById('historyFilters').addEventListener('submit', async (event) => {
-      event.preventDefault(); document.getElementById('historyPage').value = '1';
+    historyForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      document.getElementById('historyPage').value = '1';
       try { await loadHistory(); } catch (error) { showNotice(error.message, 'error'); }
     });
     historyForm.addEventListener('reset', () => {
@@ -299,16 +209,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         loadHistory().catch((error) => showNotice(error.message, 'error'));
       }, 0);
     });
-    historyForm.addEventListener('input', () => {
+    const updateExportLinks = () => {
       const query = new URLSearchParams(new FormData(historyForm));
       document.getElementById('csvExport').href = `/api/history/export?${query}&format=csv`;
       document.getElementById('pdfExport').href = `/api/history/export?${query}&format=pdf`;
-    });
-    historyForm.addEventListener('change', () => {
-      const query = new URLSearchParams(new FormData(historyForm));
-      document.getElementById('csvExport').href = `/api/history/export?${query}&format=csv`;
-      document.getElementById('pdfExport').href = `/api/history/export?${query}&format=pdf`;
-    });
+    };
+    historyForm.addEventListener('input', updateExportLinks);
+    historyForm.addEventListener('change', updateExportLinks);
     document.getElementById('prevPage').addEventListener('click', async () => {
       document.getElementById('historyPage').value = String(Math.max(1, Number(document.getElementById('historyPage').value) - 1));
       try { await loadHistory(); } catch (error) { showNotice(error.message, 'error'); }
@@ -317,48 +224,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       document.getElementById('historyPage').value = String(Number(document.getElementById('historyPage').value) + 1);
       try { await loadHistory(); } catch (error) { showNotice(error.message, 'error'); }
     });
-    try { await loadHistory(); } catch (error) { showNotice(error.message, 'error'); }
-  }
-  if (page === 'settings') {
-    try { await loadSettings(); } catch (error) { showNotice(error.message, 'error'); }
-    document.getElementById('settingsForm').addEventListener('submit', async (event) => {
-      event.preventDefault();
-      if (currentUser.role !== 'admin') return;
-      const body = {
-        gas_threshold: Number(document.getElementById('thresholdInput').value),
-        detection_delay: Number(document.getElementById('delayInput').value),
-        telegram_enabled: document.getElementById('telegramEnabled').checked
-      };
-      try {
-        await api('/settings', { method: 'PUT', body: JSON.stringify(body) });
-        showNotice('Settings saved. The ESP32 will fetch them on its next config poll.');
-      } catch (error) { showNotice(error.message, 'error'); }
-    });
-    document.getElementById('passwordForm').addEventListener('submit', async (event) => {
-      event.preventDefault();
-      const formElement = event.currentTarget;
-      const form = new FormData(formElement);
-      try {
-        await api('/auth/password', { method: 'POST', body: JSON.stringify(Object.fromEntries(form)) });
-        formElement.reset();
-        showNotice('Password changed successfully.');
-        document.getElementById('passwordReminder').textContent = '';
-      } catch (error) { showNotice(error.message, 'error'); }
-    });
-    if (currentUser.mustChangePassword) document.getElementById('passwordReminder').textContent = 'Change the seeded administrator password before continuing.';
-  }
-  if (page === 'users') {
-    try { await loadUsers(); } catch (error) { showNotice(error.message, 'error'); }
-    document.getElementById('createUserForm').addEventListener('submit', async (event) => {
-      event.preventDefault();
-      const formElement = event.currentTarget;
-      const form = new FormData(formElement);
-      try {
-        await api('/users', { method: 'POST', body: JSON.stringify(Object.fromEntries(form)) });
-        formElement.reset();
-        showNotice('Viewer account created.');
-        await loadUsers();
-      } catch (error) { showNotice(error.message, 'error'); }
-    });
+    loadHistory().catch((error) => showNotice(error.message, 'error'));
   }
 });

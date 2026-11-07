@@ -7,7 +7,7 @@
   <section class="card">
     <h2>IoT-Based Gas Leakage and Fire Safety System with Automatic Control</h2>
     <p>This prototype monitors LPG using an MQ-6 sensor and detects flame using a flame sensor. The ESP32 evaluates sensor data locally: gas leaks trigger regulator shut-off, exhaust ventilation, and an audible alarm; fire detection prioritizes the fire status and activates the sprinkler pump while shutting off gas. The 16×2 I²C LCD and GSM modem provide local status and SMS alerts.</p>
-    <p><strong>Safety design:</strong> monitoring and web connectivity are supplementary. The ESP32 runs the detection logic independently, with cached thresholds in flash. Validate every sensor, relay, valve, and power design under supervised conditions before any real-world installation.</p>
+    <p><strong>Safety design:</strong> monitoring and web connectivity are supplementary. The ESP32 runs detection logic independently using firmware-configured thresholds and delay. Validate every sensor, relay, valve, and power design under supervised conditions before any real-world installation.</p>
   </section>
   <div class="grid two" style="margin-top:1rem">
     <section class="card"><h2>System block diagram</h2>

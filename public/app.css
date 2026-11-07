@@ -211,7 +211,7 @@ body.app-shell .sidebar-links a:focus-visible {
 .button.danger:hover { background: #a52f39; box-shadow: 0 5px 12px rgb(193 60 69 / 14%); }
 .button.small { min-height: 2.15rem; padding: .4rem .65rem; font-size: .8rem; }
 .button:disabled { transform: none; opacity: .5; box-shadow: none; cursor: not-allowed; }
-#buzzerTest[aria-busy="true"]::after { width: .8rem; height: .8rem; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; content: ""; animation: button-spin .7s linear infinite; }
+#buzzerTest[aria-busy="true"]::after { flex: 0 0 .8rem; width: .8rem; height: .8rem; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; content: ""; animation: button-spin .7s linear infinite; }
 @keyframes button-spin { to { transform: rotate(360deg); } }
 .button:active, button:not(:disabled):active, .quick-action:active,
 body.app-shell .sidebar-links a:active { transform: translateY(0) scale(.97); }
@@ -315,6 +315,7 @@ body.app-shell .dashboard-sidebar .brand-mark { width: 2.55rem; height: 2.55rem;
 body.app-shell .sidebar-links { display: grid; gap: .3rem; margin-top: .35rem; }
 body.app-shell .sidebar-links a,
 body.app-shell .sidebar-logout {
+  position: relative;
   display: flex;
   min-height: 2.85rem;
   align-items: center;
@@ -331,13 +332,29 @@ body.app-shell .sidebar-logout {
   cursor: pointer;
   transition: color .15s ease, background .15s ease, border-color .15s ease, transform .15s ease;
 }
+body.app-shell .sidebar-links a::after {
+  position: absolute;
+  right: .75rem;
+  bottom: .28rem;
+  left: .75rem;
+  height: 2px;
+  border-radius: 2px;
+  background: #9ce5b8;
+  content: "";
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform .22s ease;
+}
 body.app-shell .sidebar-links a:hover,
-body.app-shell .sidebar-logout:hover { transform: translateX(3px); background: rgb(255 255 255 / 9%); color: white; }
+body.app-shell .sidebar-logout:hover { background: rgb(255 255 255 / 9%); color: white; }
+body.app-shell .sidebar-links a:hover::after,
+body.app-shell .sidebar-links a:focus-visible::after,
+body.app-shell .sidebar-links a.active::after { transform: scaleX(1); }
 body.app-shell .sidebar-links a.active {
   border-color: var(--green);
   background: var(--green);
   color: white;
-  box-shadow: inset 3px 0 var(--red), 0 5px 14px rgb(4 35 23 / 16%);
+  box-shadow: 0 5px 14px rgb(4 35 23 / 16%);
 }
 body.app-shell .sidebar-link-icon { display: inline-grid; width: 1.25rem; flex: 0 0 1.25rem; place-items: center; color: #addfc0; font-size: 1.05rem; }
 body.app-shell .sidebar-spacer { flex: 1; min-height: 1rem; }

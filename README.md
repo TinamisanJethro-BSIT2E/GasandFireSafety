@@ -2,7 +2,7 @@
 
 Capstone web and firmware prototype for the Department of Hospitality Management, Cavite State University – Imus Campus.
 
-The ESP32 runs the gas/fire detection and actuator logic locally. The web server provides monitoring, settings, history, accounts, and optional Telegram alerts; the safety logic does **not** depend on the server or Wi-Fi.
+The ESP32 runs the gas/fire detection and actuator logic locally. The web server provides public monitoring and event history; the safety logic does **not** depend on the server or Wi-Fi.
 
 > **Safety notice:** This is an educational prototype, not a certified fire alarm or gas safety product. Do not rely on it to protect life or property. Validate sensor calibration, relay isolation, mechanical valve behavior, power supplies, and failure modes with a qualified engineer. Keep tests supervised and use safe, simulated conditions.
 
@@ -11,16 +11,12 @@ The ESP32 runs the gas/fire detection and actuator logic locally. The web server
 ```text
 gasfiresystem/
 ├── server/
-│   ├── auth.js            # JWT authentication and role middleware
-│   ├── db.js              # SQLite schema, migrations, first-run administrator
+│   ├── db.js              # PostgreSQL connection and schema setup
 │   ├── index.js           # Express, static files, WebSocket setup
-│   └── routes.js          # Auth, device, history, settings, users, control APIs
+│   └── routes.js          # Public monitoring and device APIs
 ├── public/
-│   ├── index.html         # Login
 │   ├── dashboard.html     # Live status and graph
 │   ├── history.html       # Filtered log and CSV/PDF export
-│   ├── settings.html      # Threshold, delay, Telegram, password
-│   ├── users.html         # Viewer management
 │   ├── about.html         # System and wiring diagrams
 │   ├── app.css
 │   └── app.js
@@ -36,27 +32,25 @@ gasfiresystem/
 ## Requirements and setup
 
 - Node.js 20 or newer and npm.
+- PostgreSQL 12 or newer, with an empty database created for this application.
 - An internet connection for the initial npm dependency install.
 - For ESP32 builds: Arduino IDE or PlatformIO plus the libraries listed in the firmware section.
 
 In the project folder:
 
 ```powershell
-Copy-Item .env.example .env
-npm install
-npm start
+Copy-Item .env.example .env.local
+npm.cmd install
+npm.cmd start
 ```
 
-Then visit [http://localhost:3000](http://localhost:3000).
+In `.env.local`, set `DATABASE_URL` to your Supabase PostgreSQL connection string and replace `DEVICE_API_KEY` with a long random key. In Supabase, open **SQL Editor**, paste and run [`database/schema.sql`](./database/schema.sql). The schema contains only the `readings` and `events` tables. The server also applies this schema on startup if the tables do not already exist. Existing SQLite records are not imported.
 
-The server creates `data/gas-safety.db` and migrates its schema automatically. On first startup, it seeds:
+Then visit [http://localhost:3000](http://localhost:3000). There is no sign-in page; monitoring and history are publicly accessible.
 
-- **Username:** `admin`
-- **Password:** `Admin123!`
+If you already ran the previous schema in Supabase, run [`database/remove-users-settings.sql`](./database/remove-users-settings.sql) once in the SQL Editor. This permanently deletes the old user accounts, saved settings, and queued device commands. Back up anything you need before running it. The web dashboard and history endpoints are now public, so do not deploy them if those readings or events must remain private.
 
-The seeded administrator must change this password on first login. Change the credentials in `.env` before first startup for a non-demo deployment. Back up the SQLite database and protect `.env`; never expose the server or demo credentials to the public internet. Use HTTPS and replace both example secrets before deployment.
-
-To use another port, set `PORT` in `.env`. `DATABASE_PATH` can point to a different SQLite file. The browser Chart.js bundle is served from the installed package; no CDN connection is needed.
+To use another port, set `PORT` in `.env.local`. Set `DATABASE_URL` to your PostgreSQL connection string. `GAS_THRESHOLD` (default `1800`) and `DETECTION_DELAY_SECONDS` (default `5`) configure fixed device thresholds; the dashboard is read-only. The browser Chart.js bundle is served from the installed package; no CDN connection is needed.
 
 ### Run from Visual Studio Code
 
@@ -109,41 +103,30 @@ Pin definitions, polarity constants, basic wiring comments, and example diagram 
 
 - Dashboard: Normal / Gas Leak / Fire status, gas ADC gauge and threshold, flame and actuator states, online heartbeat, and live 60-reading graph.
 - History: date/type filters, pagination, and CSV or PDF export (up to 10,000 filtered events per export).
-- Settings: admin-only threshold/delay/Telegram updates and password change.
-- Users: administrators can create and delete viewer accounts. Last administrator and current session cannot be deleted.
-- Viewer accounts can monitor and export history; all protected operations are enforced server-side.
-- Optional Telegram delivery requires `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` in `.env` and enabling it in Settings. The ESP32's GSM module handles SMS. Alarm events also create a server-side “SMS Sent” record documenting that SMS dispatch was requested by the device.
-- Admin “Test buzzer” queues a limited buzzer-test command for the ESP32. It cannot remotely switch off safety actuators.
+- Public dashboard: Normal / Gas Leak / Fire status, gas ADC gauge, flame and actuator states, device heartbeat, and live 60-reading graph.
+- Public event history with date/type filters, pagination, and CSV/PDF export (up to 10,000 filtered events per export).
+- No user accounts, sign-in, settings page, remote buzzer command, or Telegram integration. Configure the gas threshold and detection delay using `GAS_THRESHOLD` and `DETECTION_DELAY_SECONDS`; the ESP32 continues to enforce local safety logic.
+- Alarm events also create a server-side “SMS Sent” record documenting that SMS dispatch was requested by the device's GSM module.
 
 ## API overview
 
-Browser API uses an HTTP-only JWT cookie. ESP32 endpoints require `x-device-api-key`.
+Dashboard and history APIs are public. ESP32 data submission and configuration endpoints require `x-device-api-key`.
 
 | Method | Endpoint | Access |
 |---|---|---|
-| `POST` | `/api/auth/login` | Public, rate-limited |
-| `POST` | `/api/auth/logout` | Public |
-| `GET` | `/api/auth/me` | Authenticated |
-| `POST` | `/api/auth/password` | Authenticated |
-| `GET` | `/api/status` | Authenticated |
-| `GET` | `/api/history?from=&to=&type=&page=` | Authenticated |
-| `GET` | `/api/history/export?format=csv\|pdf&from=&to=&type=` | Authenticated |
-| `GET` / `PUT` | `/api/settings` | Read: authenticated; update: admin |
-| `GET` / `POST` / `DELETE` | `/api/users` | Admin |
-| `POST` | `/api/control` | Admin; only `buzzer_test` |
+| `GET` | `/api/status` | Public |
+| `GET` | `/api/history?from=&to=&type=&page=` | Public |
+| `GET` | `/api/history/export?format=csv\|pdf&from=&to=&type=` | Public |
 | `POST` | `/api/device/data` | Device key |
 | `POST` | `/api/device/event` | Device key |
 | `GET` | `/api/device/config` | Device key |
-| `GET` | `/api/device/commands` | Device key |
-| `POST` | `/api/device/commands/:id/complete` | Device key |
-| WebSocket | `/live` | Authenticated cookie |
+| WebSocket | `/live` | Public |
 
-SQLite tables include `users`, `readings`, `events`, `settings`, and `device_commands`, with indexes and schema creation on startup.
+PostgreSQL tables are `readings` and `events`, with indexes and schema creation on startup.
 
 ## Manual configuration checklist
 
-1. Copy `.env.example` to `.env`; replace `JWT_SECRET` and `DEVICE_API_KEY` with long random values. Set admin credentials before the first run.
+1. Configure `DATABASE_URL` and a long random `DEVICE_API_KEY` in `.env.local`.
 2. For real hardware, set Wi-Fi name/password, the server's LAN URL, matching device key, and the GSM destination phone number in the firmware.
-3. Calibrate sensor threshold and delay; verify pin numbers, active polarity, relay module behavior, LCD address, servo travel, and safe valve position for your exact hardware.
-4. Add Telegram bot token/chat ID only if Telegram alerts are wanted; enable Telegram in admin Settings.
-5. Supply and isolate the GSM modem, relays, pump, fan, servo, and sensors according to their respective specifications.
+3. Configure `GAS_THRESHOLD` and `DETECTION_DELAY_SECONDS`; verify sensor calibration, pin numbers, active polarity, relay module behavior, LCD address, servo travel, and safe valve position for your exact hardware.
+4. Supply and isolate the GSM modem, relays, pump, fan, servo, and sensors according to their respective specifications.

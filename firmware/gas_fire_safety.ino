@@ -42,7 +42,6 @@ constexpr uint32_t DEFAULT_GAS_THRESHOLD = 1800; // Raw ADC counts; calibrate on
 constexpr uint32_t DEFAULT_DETECTION_DELAY_SECONDS = 5;
 constexpr uint32_t CONFIG_POLL_MS = 30000;
 constexpr uint32_t DATA_REPORT_MS = 2500;
-constexpr uint32_t COMMAND_POLL_MS = 5000;
 constexpr uint32_t GAS_CLEAR_HYSTERESIS_PERCENT = 90;
 // Wiring: use suitable power supplies for relay loads, servo and GSM modem.
 // SIM800L must have a dedicated supply capable of its current bursts; never use
@@ -72,7 +71,6 @@ LiquidCrystal_I2C lcd(0x27, 16, 2);
 Servo valveServo;
 HardwareSerial gsm(2);
 QueueHandle_t eventQueue;
-QueueHandle_t commandQueue;
 portMUX_TYPE stateMux = portMUX_INITIALIZER_UNLOCKED;
 Telemetry telemetry = {};
 uint32_t gasThreshold = DEFAULT_GAS_THRESHOLD;
@@ -80,7 +78,6 @@ uint32_t detectionDelaySeconds = DEFAULT_DETECTION_DELAY_SECONDS;
 uint32_t gasCandidateAt = 0;
 uint32_t fireCandidateAt = 0;
 uint32_t lastLcdUpdate = 0;
-uint32_t buzzerTestUntil = 0;
 uint8_t displayPage = 0;
 bool gasAlarmActive = false;
 bool fireAlarmActive = false;
@@ -161,7 +158,7 @@ void applyLocalSafetyLogic() {
 
   const bool fan = gasAlarmActive;
   const bool pump = fireAlarmActive;
-  const bool buzzer = gasAlarmActive || fireAlarmActive || now < buzzerTestUntil;
+  const bool buzzer = gasAlarmActive || fireAlarmActive;
   const bool closeValve = gasAlarmActive || fireAlarmActive;
 
   setRelay(PIN_RELAY_FAN, fan);
@@ -203,10 +200,6 @@ void applyLocalSafetyLogic() {
     lastLcdUpdate = now;
   }
 
-  bool runBuzzerTest = false;
-  if (commandQueue && xQueueReceive(commandQueue, &runBuzzerTest, 0) == pdTRUE) {
-    if (runBuzzerTest && !gasAlarmActive && !fireAlarmActive) buzzerTestUntil = now + 1500;
-  }
 }
 
 void sendSms(const char *eventType, int gasValue) {
@@ -306,47 +299,9 @@ void fetchConfiguration() {
   http.end();
 }
 
-void pollCommands() {
-  if (WiFi.status() != WL_CONNECTED) return;
-  WiFiClient client;
-  HTTPClient http;
-  if (!http.begin(client, String(SERVER_BASE_URL) + "/api/device/commands")) return;
-  http.setTimeout(800);
-  http.addHeader("x-device-api-key", DEVICE_API_KEY);
-  const int result = http.GET();
-  if (result == HTTP_CODE_OK) {
-    StaticJsonDocument<192> document;
-    if (deserializeJson(document, http.getString()) == DeserializationError::Ok && !document["command"].isNull()) {
-      const long id = document["command"]["id"] | 0;
-      const char *command = document["command"]["command"] | "";
-      if (id > 0 && strcmp(command, "buzzer_test") == 0) {
-        bool requestTest = true;
-        const bool queued = commandQueue && xQueueSend(commandQueue, &requestTest, 0) == pdTRUE;
-        http.end();
-        WiFiClient ackClient;
-        HTTPClient ack;
-        const String ackUrl = String(SERVER_BASE_URL) + "/api/device/commands/" + id + "/complete";
-        if (ack.begin(ackClient, ackUrl)) {
-          ack.setTimeout(800);
-          ack.addHeader("Content-Type", "application/json");
-          ack.addHeader("x-device-api-key", DEVICE_API_KEY);
-          const int ackResult = ack.POST(queued ? "{\"success\":true}" : "{\"success\":false}");
-          if (ackResult < 200 || ackResult >= 300) Serial.printf("Command acknowledgement failed: HTTP %d\n", ackResult);
-          ack.end();
-        }
-        return;
-      }
-    }
-  } else if (result < 0) {
-    Serial.printf("Command poll failed: %s\n", http.errorToString(result).c_str());
-  }
-  http.end();
-}
-
 void networkTask(void *parameter) {
   uint32_t lastData = 0;
   uint32_t lastConfig = 0;
-  uint32_t lastCommand = 0;
   uint32_t lastReconnect = 0;
   uint32_t lastEventReport = 0;
   DeviceEvent pendingEvent = {};
@@ -382,7 +337,6 @@ void networkTask(void *parameter) {
     if (WiFi.status() == WL_CONNECTED) {
       if (now - lastData >= DATA_REPORT_MS) { reportTelemetry(); lastData = now; }
       if (now - lastConfig >= CONFIG_POLL_MS) { fetchConfiguration(); lastConfig = now; }
-      if (now - lastCommand >= COMMAND_POLL_MS) { pollCommands(); lastCommand = now; }
     }
     vTaskDelay(pdMS_TO_TICKS(100));
   }
@@ -416,7 +370,6 @@ void setup() {
   if (gasThreshold < 100 || gasThreshold > 4095) gasThreshold = DEFAULT_GAS_THRESHOLD;
   if (detectionDelaySeconds < 1 || detectionDelaySeconds > 60) detectionDelaySeconds = DEFAULT_DETECTION_DELAY_SECONDS;
   eventQueue = xQueueCreate(8, sizeof(DeviceEvent));
-  commandQueue = xQueueCreate(2, sizeof(bool));
 
   WiFi.mode(WIFI_STA);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
