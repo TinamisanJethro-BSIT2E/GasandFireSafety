@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: gas-fire-safety
+    runtime: node
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /api/status
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: DEVICE_API_KEY
+        generateValue: true
+      - key: GAS_THRESHOLD
+        value: "1800"
+      - key: DETECTION_DELAY_SECONDS
+        value: "5"
